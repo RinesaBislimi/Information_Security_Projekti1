@@ -2,7 +2,7 @@ package frodokem;
 
 import java.util.Arrays;
 
-public class FrodoKEM640_Test {
+public class FrodoKEM_Test {
 
     public static void main(String[] args) {
         System.out.println("=== Testing FrodoKEM-640 with 2x2 Matrix ===");
