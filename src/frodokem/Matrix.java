@@ -6,14 +6,13 @@ public class Matrix {
     private final int[][] data;
     public final int rows;
     public final int cols;
-    private static final SecureRandom secureRandom = new SecureRandom();
 
     public Matrix(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
         this.data = new int[rows][cols];
     }
-    
+
     public Matrix(int[][] data) {
         if (data == null || data.length == 0 || data[0].length == 0) {
             throw new IllegalArgumentException("Input data must be a non-empty 2D array.");
@@ -40,7 +39,6 @@ public class Matrix {
         data[row][col] = value;
     }
 
-    // Adds modular reduction to each element in the matrix
     public Matrix mod(int modulus) {
         if (modulus <= 0) {
             throw new IllegalArgumentException("Modulus must be a positive integer.");
@@ -54,7 +52,6 @@ public class Matrix {
         return result;
     }
 
-    // Matrix addition
     public Matrix add(Matrix other) {
         if (this.rows != other.rows || this.cols != other.cols) {
             throw new IllegalArgumentException("Matrices must have the same dimensions to be added.");
@@ -68,7 +65,6 @@ public class Matrix {
         return result;
     }
 
-    // Matrix subtraction
     public Matrix subtract(Matrix other) {
         if (this.rows != other.rows || this.cols != other.cols) {
             throw new IllegalArgumentException("Matrices must have the same dimensions to be subtracted.");
@@ -82,7 +78,6 @@ public class Matrix {
         return result;
     }
 
-    // Matrix multiplication
     public Matrix multiply(Matrix other) {
         if (this.cols != other.rows) {
             throw new IllegalArgumentException("The number of columns in the first matrix must equal the number of rows in the second matrix.");
@@ -100,7 +95,6 @@ public class Matrix {
         return result;
     }
 
-    // Matrix transpose
     public Matrix transpose() {
         Matrix result = new Matrix(this.cols, this.rows);
         for (int i = 0; i < this.rows; i++) {
@@ -111,21 +105,20 @@ public class Matrix {
         return result;
     }
 
-    // Generate a discrete Gaussian noise matrix with the specified rows and columns
-    public static Matrix generateDiscreteGaussianMatrix(int rows, int cols) {
+    // Generate a discrete Gaussian matrix using a SecureRandom instance
+    public static Matrix generateDiscreteGaussianMatrix(int rows, int cols, SecureRandom random) {
         Matrix matrix = new Matrix(rows, cols);
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                matrix.set(i, j, sampleDiscreteGaussian(Constants.SIGMA));
+                matrix.set(i, j, sampleDiscreteGaussian(Constants.SIGMA, random));
             }
         }
         return matrix;
     }
 
-    // Generate a random matrix with values mod modulus
-    public static Matrix generateRandomMatrix(int rows, int cols, int modulus) {
+    // Generate a random matrix with values mod modulus using a SecureRandom instance
+    public static Matrix generateRandomMatrix(int rows, int cols, int modulus, SecureRandom random) {
         Matrix matrix = new Matrix(rows, cols);
-        SecureRandom random = new SecureRandom();
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 matrix.set(i, j, random.nextInt(modulus));
@@ -134,11 +127,10 @@ public class Matrix {
         return matrix;
     }
 
-    // Sample a discrete Gaussian noise value with mean 0 and standard deviation sigma
-    private static int sampleDiscreteGaussian(double sigma) {
-        double u1 = secureRandom.nextDouble();
-        double u2 = secureRandom.nextDouble();
-        double gaussian = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2) * Constants.SIGMA;
+    private static int sampleDiscreteGaussian(double sigma, SecureRandom random) {
+        double u1 = random.nextDouble();
+        double u2 = random.nextDouble();
+        double gaussian = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2) * sigma;
         return (int) Math.round(gaussian);
     }
 
@@ -151,29 +143,4 @@ public class Matrix {
         }
         System.out.println();
     }
-
-    // Check if this matrix is equal to another matrix
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Matrix other = (Matrix) obj;
-        if (this.rows != other.rows || this.cols != other.cols) return false;
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                if (this.get(i, j) != other.get(i, j)) return false;
-            }
-        }
-        return true;
-    }
-    // Generate a random matrix with values mod modulus using a specific SecureRandom instance
-public static Matrix generateRandomMatrix(int rows, int cols, int modulus, SecureRandom random) {
-    Matrix matrix = new Matrix(rows, cols);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            matrix.set(i, j, random.nextInt(modulus));
-        }
-    }
-    return matrix;
-}
 }
