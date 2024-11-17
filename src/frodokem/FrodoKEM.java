@@ -1,7 +1,8 @@
 package frodokem;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+
+import org.bouncycastle.crypto.digests.SHAKEDigest;
 
 public class FrodoKEM {
 
@@ -15,23 +16,28 @@ public class FrodoKEM {
         }
     }
 
-    // Standard key generation using random matrices
+    // Key generation using random matrices
     public static KeyPair keyGen() {
-        // Generate the random matrix A, and discrete Gaussian noise matrices S and E
-        Matrix A = Matrix.generateRandomMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, Constants.Q);
-        Matrix S = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE);
-        Matrix E = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE);
+        // Use the CSPRNG instance for deterministic random generation
+        SecureRandom random = CSPRNG.getInstance();
 
-        // Calculate public key B = (A * S + E) mod Q
+        // Generate random matrix A and discrete Gaussian noise matrices S and E
+        Matrix A = Matrix.generateRandomMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, Constants.Q, random);
+        Matrix S = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, random);
+        Matrix E = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, random);
+
+        // Compute public key B = (A * S + E) mod Q
         Matrix B = A.multiply(S).add(E).mod(Constants.Q);
-        return new KeyPair(B, S);
+
+        return new KeyPair(B, S); // S is used as the private key
     }
 
-    // Key generation with predefined matrices for testing purposes
+    // Key generation using predefined matrices (for testing purposes)
     public static KeyPair keyGenFromMatrices(Matrix A, Matrix S, Matrix E) {
-        // Calculate public key B = (A * S + E) mod Q
+        // Compute public key B = (A * S + E) mod Q
         Matrix B = A.multiply(S).add(E).mod(Constants.Q);
-        return new KeyPair(B, S);
+
+        return new KeyPair(B, S); // S is used as the private key
     }
 
     public static class Ciphertext {
@@ -46,18 +52,27 @@ public class FrodoKEM {
 
     // Encapsulation function to generate ciphertext
     public static Ciphertext encapsulate(Matrix publicKey) {
-        // Generate random matrix A and discrete Gaussian noise matrices r, e1, e2
-        Matrix A = Matrix.generateRandomMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, Constants.Q);
-        Matrix r = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE);
-        Matrix e1 = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE);
-        Matrix e2 = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE);
-    
-        // Calculate C1 = (A * r + e1) mod Q
+        // Use the CSPRNG instance for deterministic random generation
+        SecureRandom random = CSPRNG.getInstance();
+
+        // Generate random matrix A and discrete Gaussian noise matrices r, e1, e2 for FrodoKEM_TestVectors purpose
+        Matrix A = Matrix.generateRandomMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, Constants.Q, random);
+        Matrix r = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, random);
+        Matrix e1 = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, random);
+        Matrix e2 = Matrix.generateDiscreteGaussianMatrix(Constants.MATRIX_SIZE, Constants.MATRIX_SIZE, random);
+         // Save randomness to output folder
+        
+         FrodoKEM_Test.writeMatrixToFile(A, "random_A.txt");
+         FrodoKEM_Test.writeMatrixToFile(r, "random_r.txt");
+         FrodoKEM_Test.writeMatrixToFile(e1, "random_e1.txt");
+         FrodoKEM_Test.writeMatrixToFile(e2, "random_e2.txt");
+ 
+        // Compute C1 = (A * r + e1) mod Q
         Matrix C1 = A.multiply(r).add(e1).mod(Constants.Q);
-    
-        // Calculate C2 = (publicKey * r + e2) mod Q
+
+        // Compute C2 = (publicKey * r + e2) mod Q
         Matrix C2 = publicKey.multiply(r).add(e2).mod(Constants.Q);
-    
+
         return new Ciphertext(C1, C2);
     }
 
@@ -66,7 +81,7 @@ public class FrodoKEM {
         Matrix C1 = ct.C1;
         Matrix C2 = ct.C2;
 
-        // Derive shared secret matrix by calculating C2 - (S^T * C1) mod Q
+        // Compute derived secret matrix
         Matrix derivedSecret = privateKey.transpose().multiply(C1).mod(Constants.Q);
         Matrix sharedSecretMatrix = C2.subtract(derivedSecret).mod(Constants.Q);
 
@@ -74,18 +89,18 @@ public class FrodoKEM {
         return hashMatrix(sharedSecretMatrix);
     }
 
-    // Hash the shared secret matrix to produce a byte array (shared secret)
+    // Hash the shared secret matrix to produce a byte array
     public static byte[] hashMatrix(Matrix matrix) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            for (int i = 0; i < matrix.rows; i++) {
-                for (int j = 0; j < matrix.cols; j++) {
-                    digest.update((byte) matrix.get(i, j));
-                }
+        // Use SHAKE-256 for hashing the shared secret matrix
+        SHAKEDigest shake256 = new SHAKEDigest(256);
+        for (int i = 0; i < matrix.rows; i++) {
+            for (int j = 0; j < matrix.cols; j++) {
+                byte[] elementBytes = Integer.toString(matrix.get(i, j)).getBytes();
+                shake256.update(elementBytes, 0, elementBytes.length);
             }
-            return digest.digest();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not found.");
         }
+        byte[] output = new byte[32]; // 256 bits = 32 bytes
+        shake256.doFinal(output, 0, output.length);
+        return output;
     }
 }
