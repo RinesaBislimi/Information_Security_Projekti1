@@ -11,46 +11,51 @@ public class FrodoKEM_Test {
     private static final String OUTPUT_FOLDER = "output";
 
     public static void main(String[] args) {
-        System.out.println("=== Testing FrodoKEM-640 with 2x2 Matrix ===");
+        System.out.println("=== Testing FrodoKEM ===");
 
-        // Create output folder
+        // Ensure output folder exists
         createOutputFolder();
 
         // Step 1: Key Generation
-        System.out.println("\n[Step 1: Key Generation]");
+        System.out.println("[Step 1: Key Generation]");
         FrodoKEM.KeyPair keyPair = FrodoKEM.keyGen();
 
+        // Save Public and Private Keys
         System.out.println("Public Key:");
-        printMatrix(keyPair.publicKey);
+        keyPair.publicKey.print();
         writeMatrixToFile(keyPair.publicKey, "public_key.txt");
 
         System.out.println("Private Key:");
-        printMatrix(keyPair.privateKey);
+        keyPair.privateKey.print();
         writeMatrixToFile(keyPair.privateKey, "private_key.txt");
 
         // Step 2: Encapsulation
-        System.out.println("\n[Step 2: Encapsulation]");
+        System.out.println("[Step 2: Encapsulation]");
         FrodoKEM.Ciphertext ciphertext = FrodoKEM.encapsulate(keyPair.publicKey);
 
+        // Save Ciphertext Matrices
         System.out.println("Ciphertext C1:");
-        printMatrix(ciphertext.C1);
+        ciphertext.C1.print();
         writeMatrixToFile(ciphertext.C1, "ciphertext_C1.txt");
 
         System.out.println("Ciphertext C2:");
-        printMatrix(ciphertext.C2);
+        ciphertext.C2.print();
         writeMatrixToFile(ciphertext.C2, "ciphertext_C2.txt");
+        // Save randomness
+        
 
-        // Shared secret during encapsulation
-        Matrix sharedSecretEncapsulationMatrix = ciphertext.C2.subtract(
-                keyPair.privateKey.transpose().multiply(ciphertext.C1).mod(Constants.Q)
-        ).mod(Constants.Q);
-        byte[] sharedSecretEncapsulation = FrodoKEM.hashMatrix(sharedSecretEncapsulationMatrix);
+        // Generate shared secret during encapsulation
+        byte[] sharedSecretEncapsulation = FrodoKEM.hashMatrix(
+                ciphertext.C2.subtract(keyPair.privateKey.transpose().multiply(ciphertext.C1).mod(Constants.Q)).mod(Constants.Q)
+        );
+
         System.out.println("Shared Secret (Encapsulation): " + bytesToHex(sharedSecretEncapsulation));
         writeToFile("Shared Secret (Encapsulation): " + bytesToHex(sharedSecretEncapsulation), "shared_secret_encapsulation.txt");
 
         // Step 3: Decapsulation
-        System.out.println("\n[Step 3: Decapsulation]");
+        System.out.println("[Step 3: Decapsulation]");
         byte[] sharedSecretDecapsulation = FrodoKEM.decapsulate(ciphertext, keyPair.privateKey);
+
         System.out.println("Shared Secret (Decapsulation): " + bytesToHex(sharedSecretDecapsulation));
         writeToFile("Shared Secret (Decapsulation): " + bytesToHex(sharedSecretDecapsulation), "shared_secret_decapsulation.txt");
 
@@ -58,8 +63,9 @@ public class FrodoKEM_Test {
         boolean success = Arrays.equals(sharedSecretEncapsulation, sharedSecretDecapsulation);
         System.out.println("\nTest " + (success ? "PASSED" : "FAILED"));
         writeToFile("Test " + (success ? "PASSED" : "FAILED"), "test_result.txt");
-    }
+    } 
 
+    // Ensure the output folder exists
     private static void createOutputFolder() {
         File folder = new File(OUTPUT_FOLDER);
         if (!folder.exists()) {
@@ -71,7 +77,9 @@ public class FrodoKEM_Test {
         }
     }
 
-    private static void writeMatrixToFile(Matrix matrix, String fileName) {
+
+    // Write matrix data to a text file
+    public static void writeMatrixToFile(Matrix matrix, String fileName) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FOLDER + "/" + fileName))) {
             for (int i = 0; i < matrix.rows; i++) {
                 for (int j = 0; j < matrix.cols; j++) {
@@ -84,6 +92,7 @@ public class FrodoKEM_Test {
         }
     }
 
+    // Write textual content to a text file
     private static void writeToFile(String content, String fileName) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FOLDER + "/" + fileName))) {
             writer.write(content);
@@ -92,15 +101,7 @@ public class FrodoKEM_Test {
         }
     }
 
-    private static void printMatrix(Matrix matrix) {
-        for (int i = 0; i < matrix.rows; i++) {
-            for (int j = 0; j < matrix.cols; j++) {
-                System.out.print(matrix.get(i, j) + "\t");
-            }
-            System.out.println();
-        }
-    }
-
+    // Convert byte array to hexadecimal representation
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
